@@ -45,8 +45,6 @@ class ApplicationServiceTestCase(unittest.TestCase):
         )
 
         self.store = Mock()
-        self.store.get_aliases_for_room = simple_async_mock(return_value=[])
-        self.store.get_users_in_room = simple_async_mock(return_value=[])
 
     @defer.inlineCallbacks
     def test_regex_user_id_prefix_match(self):
@@ -120,10 +118,10 @@ class ApplicationServiceTestCase(unittest.TestCase):
         self.service.namespaces[ApplicationService.NS_ALIASES].append(
             _regex("#irc_.*:matrix.org")
         )
-        self.store.get_aliases_for_room.return_value = defer.succeed(
-            ["#irc_foobar:matrix.org", "#athing:matrix.org"]
+        self.store.get_aliases_for_room = simple_async_mock(
+            return_value=["#irc_foobar:matrix.org", "#athing:matrix.org"]
         )
-        self.store.get_users_in_room.return_value = defer.succeed([])
+        self.store.get_users_in_room = simple_async_mock(return_value=[])
         self.assertTrue(
             (
                 yield defer.ensureDeferred(
@@ -173,8 +171,8 @@ class ApplicationServiceTestCase(unittest.TestCase):
         self.service.namespaces[ApplicationService.NS_ALIASES].append(
             _regex("#irc_.*:matrix.org")
         )
-        self.store.get_aliases_for_room.return_value = defer.succeed(
-            ["#xmpp_foobar:matrix.org", "#athing:matrix.org"]
+        self.store.get_aliases_for_room = simple_async_mock(
+            return_value=["#xmpp_foobar:matrix.org", "#athing:matrix.org"]
         )
         self.store.get_users_in_room.return_value = defer.succeed([])
         self.assertFalse(
@@ -192,10 +190,10 @@ class ApplicationServiceTestCase(unittest.TestCase):
         )
         self.service.namespaces[ApplicationService.NS_USERS].append(_regex("@irc_.*"))
         self.event.sender = "@irc_foobar:matrix.org"
-        self.store.get_aliases_for_room.return_value = defer.succeed(
-            ["#irc_barfoo:matrix.org"]
+        self.store.get_aliases_for_room = simple_async_mock(
+            return_value=["#irc_barfoo:matrix.org"]
         )
-        self.store.get_users_in_room.return_value = defer.succeed([])
+        self.store.get_users_in_room = simple_async_mock(return_value=[])
         self.assertTrue(
             (
                 yield defer.ensureDeferred(
@@ -224,10 +222,10 @@ class ApplicationServiceTestCase(unittest.TestCase):
     def test_member_list_match(self):
         self.service.namespaces[ApplicationService.NS_USERS].append(_regex("@irc_.*"))
         # Note that @irc_fo:here is the AS user.
-        self.store.get_users_in_room.return_value = defer.succeed(
-            ["@alice:here", "@irc_fo:here", "@bob:here"]
+        self.store.get_users_in_room = simple_async_mock(
+            return_value=["@alice:here", "@irc_fo:here", "@bob:here"]
         )
-        self.store.get_aliases_for_room.return_value = defer.succeed([])
+        self.store.get_aliases_for_room = simple_async_mock(return_value=[])
 
         self.event.sender = "@xmpp_foobar:matrix.org"
         self.assertTrue(
