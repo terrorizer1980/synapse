@@ -228,7 +228,9 @@ class RetentionTestCase(unittest.HomeserverTestCase):
         self.assertIsNotNone(event)
 
         time_now = self.clock.time_msec()
-        serialized = self.get_success(self.serializer.serialize_event(event, time_now))
+        serialized = self.get_success(
+            self.serializer.serialize_event(event, self.user_id, time_now)
+        )
 
         return serialized
 

@@ -417,14 +417,15 @@ class SearchHandler:
 
         # TODO: Add a limit
 
+        user_id = user.to_string()
         time_now = self.clock.time_msec()
 
         for context in contexts.values():
             context["events_before"] = await self._event_serializer.serialize_events(
-                context["events_before"], time_now
+                context["events_before"], user_id, time_now
             )
             context["events_after"] = await self._event_serializer.serialize_events(
-                context["events_after"], time_now
+                context["events_after"], user_id, time_now
             )
 
         state_results = {}
@@ -442,7 +443,9 @@ class SearchHandler:
                 {
                     "rank": rank_map[e.event_id],
                     "result": (
-                        await self._event_serializer.serialize_event(e, time_now)
+                        await self._event_serializer.serialize_event(
+                            e, user_id, time_now
+                        )
                     ),
                     "context": contexts.get(e.event_id, {}),
                 }
@@ -458,7 +461,7 @@ class SearchHandler:
             s = {}
             for room_id, state_events in state_results.items():
                 s[room_id] = await self._event_serializer.serialize_events(
-                    state_events, time_now
+                    state_events, user_id, time_now
                 )
 
             rooms_cat_res["state"] = s

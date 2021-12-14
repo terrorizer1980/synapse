@@ -216,7 +216,11 @@ class SyncRestServlet(RestServlet):
         # We know that the the requester has an access token since appservices
         # cannot use sync.
         response_content = await self.encode_response(
-            time_now, sync_result, requester.access_token_id, filter_collection
+            user.to_string(),
+            time_now,
+            sync_result,
+            requester.access_token_id,
+            filter_collection,
         )
 
         logger.debug("Event formatting complete")
@@ -224,6 +228,7 @@ class SyncRestServlet(RestServlet):
 
     async def encode_response(
         self,
+        user_id: str,
         time_now: int,
         sync_result: SyncResult,
         access_token_id: Optional[int],
@@ -238,6 +243,7 @@ class SyncRestServlet(RestServlet):
             raise Exception("Unknown event format %s" % (filter.event_format,))
 
         joined = await self.encode_joined(
+            user_id,
             sync_result.joined,
             time_now,
             access_token_id,
@@ -246,14 +252,15 @@ class SyncRestServlet(RestServlet):
         )
 
         invited = await self.encode_invited(
-            sync_result.invited, time_now, access_token_id, event_formatter
+            user_id, sync_result.invited, time_now, access_token_id, event_formatter
         )
 
         knocked = await self.encode_knocked(
-            sync_result.knocked, time_now, access_token_id, event_formatter
+            user_id, sync_result.knocked, time_now, access_token_id, event_formatter
         )
 
         archived = await self.encode_archived(
+            user_id,
             sync_result.archived,
             time_now,
             access_token_id,
@@ -334,6 +341,7 @@ class SyncRestServlet(RestServlet):
 
     async def encode_joined(
         self,
+        user_id: str,
         rooms: List[JoinedSyncResult],
         time_now: int,
         token_id: Optional[int],
@@ -344,6 +352,7 @@ class SyncRestServlet(RestServlet):
         Encode the joined rooms in a sync result
 
         Args:
+            user_id: The user who requested the sync.
             rooms: list of sync results for rooms this user is joined to
             time_now: current time - used as a baseline for age calculations
             token_id: ID of the user's auth token - used for namespacing
@@ -358,6 +367,7 @@ class SyncRestServlet(RestServlet):
         joined = {}
         for room in rooms:
             joined[room.room_id] = await self.encode_room(
+                user_id,
                 room,
                 time_now,
                 token_id,
@@ -370,6 +380,7 @@ class SyncRestServlet(RestServlet):
 
     async def encode_invited(
         self,
+        user_id: str,
         rooms: List[InvitedSyncResult],
         time_now: int,
         token_id: Optional[int],
@@ -379,6 +390,7 @@ class SyncRestServlet(RestServlet):
         Encode the invited rooms in a sync result
 
         Args:
+            user_id: The user who requested the sync.
             rooms: list of sync results for rooms this user is invited to
             time_now: current time - used as a baseline for age calculations
             token_id: ID of the user's auth token - used for namespacing
@@ -393,6 +405,7 @@ class SyncRestServlet(RestServlet):
         for room in rooms:
             invite = await self._event_serializer.serialize_event(
                 room.invite,
+                user_id,
                 time_now,
                 token_id=token_id,
                 event_format=event_formatter,
@@ -408,6 +421,7 @@ class SyncRestServlet(RestServlet):
 
     async def encode_knocked(
         self,
+        user_id: str,
         rooms: List[KnockedSyncResult],
         time_now: int,
         token_id: Optional[int],
@@ -417,6 +431,7 @@ class SyncRestServlet(RestServlet):
         Encode the rooms we've knocked on in a sync result.
 
         Args:
+            user_id: The user who requested the sync.
             rooms: list of sync results for rooms this user is knocking on
             time_now: current time - used as a baseline for age calculations
             token_id: ID of the user's auth token - used for namespacing of transaction IDs
@@ -429,6 +444,7 @@ class SyncRestServlet(RestServlet):
         for room in rooms:
             knock = await self._event_serializer.serialize_event(
                 room.knock,
+                user_id,
                 time_now,
                 token_id=token_id,
                 event_format=event_formatter,
@@ -462,6 +478,7 @@ class SyncRestServlet(RestServlet):
 
     async def encode_archived(
         self,
+        user_id: str,
         rooms: List[ArchivedSyncResult],
         time_now: int,
         token_id: Optional[int],
@@ -472,6 +489,7 @@ class SyncRestServlet(RestServlet):
         Encode the archived rooms in a sync result
 
         Args:
+            user_id: The user who requested the sync.
             rooms: list of sync results for rooms this user is joined to
             time_now: current time - used as a baseline for age calculations
             token_id: ID of the user's auth token - used for namespacing
@@ -485,6 +503,7 @@ class SyncRestServlet(RestServlet):
         joined = {}
         for room in rooms:
             joined[room.room_id] = await self.encode_room(
+                user_id,
                 room,
                 time_now,
                 token_id,
@@ -497,6 +516,7 @@ class SyncRestServlet(RestServlet):
 
     async def encode_room(
         self,
+        user_id: str,
         room: Union[JoinedSyncResult, ArchivedSyncResult],
         time_now: int,
         token_id: Optional[int],
@@ -506,6 +526,7 @@ class SyncRestServlet(RestServlet):
     ) -> JsonDict:
         """
         Args:
+            user_id: The user who requested the sync.
             room: sync result for a single room
             time_now: current time - used as a baseline for age calculations
             token_id: ID of the user's auth token - used for namespacing
@@ -522,6 +543,7 @@ class SyncRestServlet(RestServlet):
         def serialize(events: Iterable[EventBase]) -> Awaitable[List[JsonDict]]:
             return self._event_serializer.serialize_events(
                 events,
+                user_id,
                 time_now=time_now,
                 # Don't bother to bundle aggregations if the timeline is unlimited,
                 # as clients will have all the necessary information.

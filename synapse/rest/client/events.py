@@ -91,7 +91,9 @@ class EventRestServlet(RestServlet):
 
         time_now = self.clock.time_msec()
         if event:
-            result = await self._event_serializer.serialize_event(event, time_now)
+            result = await self._event_serializer.serialize_event(
+                event, requester.user.to_string(), time_now
+            )
             return 200, result
         else:
             return 404, "Event not found."

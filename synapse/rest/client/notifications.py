@@ -74,6 +74,7 @@ class NotificationsServlet(RestServlet):
                 "event": (
                     await self._event_serializer.serialize_event(
                         notif_events[pa["event_id"]],
+                        requester.user.to_string(),
                         self.clock.time_msec(),
                         event_format=format_event_for_client_v2_without_room_id,
                     )

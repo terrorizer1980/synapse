@@ -415,7 +415,8 @@ class RoomStateRestServlet(RestServlet):
     async def on_GET(
         self, request: SynapseRequest, room_id: str
     ) -> Tuple[int, JsonDict]:
-        await assert_requester_is_admin(self.auth, request)
+        requester = await self.auth.get_user_by_req(request)
+        await assert_user_is_admin(self.auth, requester.user)
 
         ret = await self.store.get_room(room_id)
         if not ret:
@@ -424,7 +425,9 @@ class RoomStateRestServlet(RestServlet):
         event_ids = await self.store.get_current_state_ids(room_id)
         events = await self.store.get_events(event_ids.values())
         now = self.clock.time_msec()
-        room_state = await self._event_serializer.serialize_events(events.values(), now)
+        room_state = await self._event_serializer.serialize_events(
+            events.values(), requester.user.to_string(), now
+        )
         ret = {"state": room_state}
 
         return HTTPStatus.OK, ret
@@ -743,18 +746,19 @@ class RoomEventContextServlet(RestServlet):
                 HTTPStatus.NOT_FOUND, "Event not found.", errcode=Codes.NOT_FOUND
             )
 
+        user_id = requester.user.to_string()
         time_now = self.clock.time_msec()
         results["events_before"] = await self._event_serializer.serialize_events(
-            results["events_before"], time_now
+            results["events_before"], user_id, time_now
         )
         results["event"] = await self._event_serializer.serialize_event(
-            results["event"], time_now
+            results["event"], user_id, time_now
         )
         results["events_after"] = await self._event_serializer.serialize_events(
-            results["events_after"], time_now
+            results["events_after"], user_id, time_now
         )
         results["state"] = await self._event_serializer.serialize_events(
-            results["state"], time_now
+            results["state"], user_id, time_now
         )
 
         return HTTPStatus.OK, results

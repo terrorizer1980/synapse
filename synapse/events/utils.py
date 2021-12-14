@@ -31,11 +31,10 @@ from frozendict import frozendict
 from synapse.api.constants import EventContentFields, EventTypes, RelationTypes
 from synapse.api.errors import Codes, SynapseError
 from synapse.api.room_versions import RoomVersion
+from synapse.events import EventBase
 from synapse.types import JsonDict
 from synapse.util.async_helpers import yieldable_gather_results
 from synapse.util.frozenutils import unfreeze
-
-from . import EventBase
 
 if TYPE_CHECKING:
     from synapse.server import HomeServer
@@ -393,6 +392,7 @@ class EventClientSerializer:
     async def serialize_event(
         self,
         event: Union[JsonDict, EventBase],
+        user_id: str,
         time_now: int,
         *,
         bundle_aggregations: bool = True,
@@ -402,6 +402,7 @@ class EventClientSerializer:
 
         Args:
             event: The event being serialized.
+            user_id: The user requesting the event.
             time_now: The current time in milliseconds
             bundle_aggregations: Whether to include the bundled aggregations for this
                 event. Only applies to non-state events. (State events never include
@@ -430,17 +431,20 @@ class EventClientSerializer:
             and not event.is_state()
             and not event.internal_metadata.is_redacted()
         ):
-            await self._injected_bundled_aggregations(event, time_now, serialized_event)
+            await self._injected_bundled_aggregations(
+                event, user_id, time_now, serialized_event
+            )
 
         return serialized_event
 
     async def _injected_bundled_aggregations(
-        self, event: EventBase, time_now: int, serialized_event: JsonDict
+        self, event: EventBase, user_id: str, time_now: int, serialized_event: JsonDict
     ) -> None:
         """Potentially injects bundled aggregations into the unsigned portion of the serialized event.
 
         Args:
             event: The event being serialized.
+            user_id: The user requesting the event.
             time_now: The current time in milliseconds
             serialized_event: The serialized event which may be modified.
 
@@ -511,7 +515,10 @@ class EventClientSerializer:
                 aggregations[RelationTypes.THREAD] = {
                     # Don't bundle aggregations as this could recurse forever.
                     "latest_event": await self.serialize_event(
-                        latest_thread_event, time_now, bundle_aggregations=False
+                        latest_thread_event,
+                        user_id,
+                        time_now,
+                        bundle_aggregations=False,
                     ),
                     "count": thread_count,
                 }
@@ -523,12 +530,17 @@ class EventClientSerializer:
             )
 
     async def serialize_events(
-        self, events: Iterable[Union[JsonDict, EventBase]], time_now: int, **kwargs: Any
+        self,
+        events: Iterable[Union[JsonDict, EventBase]],
+        user_id: str,
+        time_now: int,
+        **kwargs: Any,
     ) -> List[JsonDict]:
         """Serializes multiple events.
 
         Args:
             event
+            user_id: The user requesting the event.
             time_now: The current time in milliseconds
             **kwargs: Arguments to pass to `serialize_event`
 
@@ -536,7 +548,7 @@ class EventClientSerializer:
             The list of serialized events
         """
         return await yieldable_gather_results(
-            self.serialize_event, events, time_now=time_now, **kwargs
+            self.serialize_event, events, user_id, time_now=time_now, **kwargs
         )
 
 

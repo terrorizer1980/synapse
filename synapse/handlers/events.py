@@ -120,6 +120,7 @@ class EventStreamHandler:
 
             chunks = await self._event_serializer.serialize_events(
                 events,
+                auth_user_id,
                 time_now,
                 as_client_event=as_client_event,
                 # Don't bundle aggregations as this is a deprecated API.
