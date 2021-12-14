@@ -510,7 +510,8 @@ class EventClientSerializer:
             (
                 thread_count,
                 latest_thread_event,
-            ) = await self.store.get_thread_summary(event_id, room_id)
+                participated,
+            ) = await self.store.get_thread_summary(event_id, room_id, user_id)
             if latest_thread_event:
                 aggregations[RelationTypes.THREAD] = {
                     # Don't bundle aggregations as this could recurse forever.
@@ -521,6 +522,7 @@ class EventClientSerializer:
                         bundle_aggregations=False,
                     ),
                     "count": thread_count,
+                    "current_user_participated": participated,
                 }
 
         # If any bundled aggregations were found, include them.
